@@ -1,0 +1,42 @@
+#Name: Pejmon Rahimi
+#EID: pr9922
+
+	.pos 0
+init:
+	irmovq stack, %rsp
+	call copy_block
+	halt
+
+	.align 8
+src:
+	.quad 0x00a
+	.quad 0x0b0
+	.quad 0xc00
+dest:
+	.quad 0x111
+	.quad 0x222
+	.quad 0x333
+
+copy_block:
+	irmovq $3, %rdx
+	irmovq src, %rbx
+	irmovq dest, %rcx
+	andq %rdx, %rdx
+L2:
+	mrmovq (%rbx), %r8
+	rmmovq %r8, (%rcx)
+	xorq %r8, %rax
+	irmovq $1, %rdi
+	subq %rdi, %rdx
+	irmovq $8, %rdi
+	addq %rdi, %rbx
+	addq %rdi, %rcx
+	andq %rdx, %rdx
+	jne L2
+done:
+	rrmovq %rax, %r8
+	ret
+
+	.pos 0x200
+stack:
+

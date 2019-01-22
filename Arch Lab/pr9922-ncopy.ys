@@ -1,0 +1,180 @@
+#/* $begin ncopy-ys */
+##################################################################
+# ncopy.ys - Copy a src block of len words to dst.
+# Return the number of positive words (>0) contained in src.
+#
+# 
+# 
+#  Name: Pejmon Rahimi
+#  EID: pr9922
+#
+#  Changes: First of all, I changed the code to implement "iaddq"
+#  which previously took more than one instruction to do. This saves
+#  some clock cycles because it will reduce the amount of stages and 
+#  operations performed. Also, for some reason with my implementation,
+#  I noticed that moving 0 into the register and then checking, performed
+#  slightly better than using the "andq" instruction. I also extended the 
+#  loop so that 7 operations could be performed per iteration. After doing 
+#  this, I had to take care of the stragglers that are present when there 
+#  arent 7 elements to grab. 7 operations seemed to be the threshold of 
+#  performance in the case of my pipleline, as anything greater caused worse
+#  CPE. Other than this, the order of the memory moves definitly affected 
+#  performance. Due to caching, memory moves that are near each other should 
+#  be done as much as possible to avoid costly jumps back and forth from memory.
+#
+#  Overall, I ran at a final average of 8.49 clock cycles.
+#
+##################################################################
+# Do not modify this portion
+# Function prologue.
+# %rdi = src, %rsi = dst, %rdx = len
+ncopy:
+
+##################################################################
+# You can modify this portion
+	# Loop header
+	xorq %rax, %rax       #clear rax
+	iaddq $0, %rdx        #add 0 into rdx to check
+	jle Done              #if len is 0, then finished
+	iaddq $-7, %rdx       #else, subtract 7 from len
+	jge Loop              #if greater than or equal to 0 then goto loop
+	jmp restoreLen        #else restore length and deal with stragglers
+
+Loop:	
+	mrmovq (%rdi), %r10    #read from src[0+x]
+	mrmovq 8(%rdi), %r11   #read from src[1+X] 
+	rmmovq %r10, (%rsi)    #write from src[0+x] to dest[0+x]
+	iaddq $0, %r10          
+	jle second	       #if first val is <= 0 then jump to Npos
+
+increment:
+	iaddq $1, %rax         #else, val is positive, so increment result
+
+second:
+	rmmovq %r11, 8(%rsi)  #store src[1+x] in dest[1+x]
+	iaddq $0, %r11       
+	jle third             #if src[1+x] is <= 0, then jump to third val
+
+increment2:
+	iaddq $1, %rax         #else, val is positive, so increment result
+
+third:
+	mrmovq 16(%rdi), %r10   #move src[2+x] to dest[2+x]
+	mrmovq 24(%rdi), %r11    #grab src[3+x]
+	rmmovq %r10, 16(%rsi)
+	iaddq $0, %r10
+	jle fourth               #if <= 0, jump to fourth val
+
+increment3:
+	iaddq $1, %rax         #else, val is positive, so increment result
+
+fourth:
+	rmmovq %r11, 24(%rsi)
+	iaddq $0, %r11         
+	jle fifth              #if val is less than equal, jump to fifth val
+
+increment4:
+	iaddq $1, %rax         #else, val is positive, so increment result
+
+fifth:
+	mrmovq 32(%rdi), %r10    
+	mrmovq 40(%rdi), %r11    #move src[3+x] to register
+	rmmovq %r10, 32(%rsi)    #move src[4+x] to dest[4+x]
+	iaddq $0, %r10         
+	jle sixth           #if val is less than equal, skip increment
+
+increment5:
+	iaddq $1, %rax         #else, val is positive, so increment result
+
+sixth:
+	rmmovq %r11, 40(%rsi)
+	iaddq $0, %r11         
+	jle seventh              #if val is less than equal, skip increment
+
+increment6:
+	iaddq $1, %rax         #else, val is positive, so increment result
+
+seventh:
+	mrmovq 48(%rdi), %r10
+	rmmovq %r10, 48(%rsi)
+	iaddq $0, %r10
+	jle grabset
+
+increment7:
+	iaddq $1, %rax         #else, val is positive, so increment result
+
+grabset:
+	iaddq $56, %rdi
+	iaddq $56, %rsi     #increment rdi and rsi to ge next set
+	iaddq $-7, %rdx     #decrement len by 7 for next batch
+	jge Loop            #if greater or 0, go to loop, else they are stragglers
+
+restoreLen:
+	iaddq $7, %rdx
+
+#These numbers are not grabbed by the set, they must be handled
+
+straggler1:
+	iaddq $-1, %rdx
+	jl Done
+	mrmovq (%rdi), %r10
+	mrmovq 8(%rdi), %r11
+	rmmovq %r10, (%rsi)
+	iaddq $0, %r10
+	jle straggler2
+	iaddq $1, %rax
+
+straggler2:
+	iaddq $-1, %rdx
+	jl Done
+	rmmovq %r11, 8(%rsi)
+	iaddq $0, %r11
+	jle straggler3
+	iaddq $1, %rax
+
+straggler3:
+	iaddq $-1, %rdx
+	jl Done
+	mrmovq 16(%rdi), %r10
+	mrmovq 24(%rdi), %r11
+	rmmovq %r10, 16(%rsi)
+	iaddq $0, %r10
+	jle straggler4
+	iaddq $1, %rax
+
+straggler4:
+	iaddq $-1, %rdx
+	jl Done
+	rmmovq %r11, 24(%rsi)
+	iaddq $0, %r11
+	jle straggler5
+	iaddq $1, %rax
+
+straggler5:
+	iaddq $-1, %rdx
+	jl Done
+	mrmovq 32(%rdi), %r10
+	rmmovq %r10, 32(%rsi)
+	iaddq $0, %r10
+	jle straggler6
+	iaddq $1, %rax
+
+straggler6:
+	iaddq $-1, %rdx
+	jl Done
+	mrmovq 40(%rdi), %r11
+	rmmovq %r11, 40(%rsi)
+	iaddq $0, %r11
+	jle Done
+	iaddq $1, %rax
+
+
+##################################################################
+# Do not modify the following section of code
+# Function epilogue.
+Done:
+	ret
+##################################################################
+# Keep the following label at the end of your function
+End:
+#/* $end ncopy-ys */

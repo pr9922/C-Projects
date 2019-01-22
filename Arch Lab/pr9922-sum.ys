@@ -1,0 +1,42 @@
+#Name: Pejmon Rahimi
+#EID: pr9922
+
+	.pos 0
+init:	
+	irmovq stack,%rsp
+	call Main
+	halt
+
+# Sample linked list
+	.align 8
+ele1:
+	.quad 0x00a
+	.quad ele2
+ele2:
+	.quad 0x0b0
+	.quad ele3
+ele3:
+	.quad 0xc00
+	.quad 0
+
+Main:
+	irmovq ele1, %rbx
+	call sum_list
+
+sum_list:
+	rrmovq %rbx, %rdx
+	irmovq $0, %rax
+	andq %rdx, %rdx
+	je done
+L2:
+	mrmovq (%rdx), %rdi
+	addq %rdi, %rax
+	mrmovq 8(%rdx), %rdx
+	andq %rdx, %rdx
+	jne L2
+done:
+	ret
+
+	.pos 0x200
+stack:
+

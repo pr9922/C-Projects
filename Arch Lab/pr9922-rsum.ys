@@ -1,0 +1,43 @@
+#Name: Pejmon Rahimi
+#EID: pr9922
+
+	.pos 0
+init:	
+	irmovq stack, %rsp
+	irmovq ele1, %rbx
+	pushq %rbx
+	call rsum_list
+	halt
+
+# Sample linked list
+	.align 8
+ele1:
+	.quad 0x00a
+	.quad ele2
+ele2:
+	.quad 0x0b0
+	.quad ele3
+ele3:
+	.quad 0xc00
+	.quad 0
+
+rsum_list:
+	pushq %rsp
+	mrmovq 16(%rsp), %rdx
+	pushq %rbx
+	andq %rdx, %rdx
+	mrmovq (%rdx), %rbx
+	je done
+	mrmovq 8(%rdx), %rdx
+	pushq %rdx
+	call rsum_list
+	addq %rbx, %rax
+	popq %rdx
+done:
+	popq %rbx
+	popq %rsp
+	ret
+
+	.pos 0x200
+stack:
+
